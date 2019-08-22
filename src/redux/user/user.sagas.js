@@ -6,7 +6,9 @@ import {
 	signInSuccess, 
 	signInFailure,
 	signOutSuccess,
-	signOutFailure
+	signOutFailure,
+	signUpSuccess,
+	signUpFailure
 } from './user.actions';
 
 import { 
@@ -16,9 +18,9 @@ import {
 	getCurrentUser,
 } from '../../firebase/firebase.utils';
 
-export function* getSnapshotFromUserAuth(userAuth) {
+export function* getSnapshotFromUserAuth(userAuth, additionalData) {
 	try {
-		const userRef = yield call(createUserProfileDocument, userAuth);
+		const userRef = yield call(createUserProfileDocument, userAuth, additionalData);
 		const userSnapshot = yield userRef.get();
 		yield put(signInSuccess({ id: userSnapshot.id, ...userSnapshot.data() }))
 	} catch(error) {
@@ -60,19 +62,21 @@ export function* signOut() {
 		yield auth.signOut();
 		yield put(signOutSuccess());
 	} catch(error) {
-		yield put(signOutFailure(error));
+		yield put(signUpFailure(error));
 	}
 }
 
 export function* signUp({ payload: { email, password, displayName }}) {
 	try {
 		const { user } = yield auth.createUserWithEmailAndPassword(email, password);
-		const userRef = yield call(createUserProfileDocument, user, { displayName });
-		const userSnapshot = yield userRef.get();
-		yield put(signInSuccess({ id: userSnapshot.id, ...userSnapshot.data() }))
+		yield put(signUpSuccess({ user, additionalData: { displayName } }));
 	} catch(error) {
 		yield put(signInFailure(error));
 	}
+}
+
+export function* signInAfterSignup({ payload: { user, additionalData }}) {
+	yield getSnapshotFromUserAuth(user, additionalData);
 }
 
 export function* onGoogleSignInStart() {
@@ -95,12 +99,17 @@ export function* onSignUpStart() {
 	yield takeLatest(UserActionTypes.SIGN_UP_START, signUp)
 }
 
+export function* onSignUpSuccess() {
+	yield takeLatest(UserActionTypes.SIGN_UP_SUCCESS, signInAfterSignup)
+}
+
 export function* userSagas() {
 	yield all([
 		call(onGoogleSignInStart), 
 		call(onEmailSignInStart),
 		call(onCheckUserSession),
 		call(onSignOutStart),
-		call(onSignUpStart)
+		call(onSignUpStart),
+		call(onSignUpSuccess)
 	])
 }
