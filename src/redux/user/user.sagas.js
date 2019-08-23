@@ -62,7 +62,7 @@ export function* signOut() {
 		yield auth.signOut();
 		yield put(signOutSuccess());
 	} catch(error) {
-		yield put(signUpFailure(error));
+		yield put(signOutFailure(error));
 	}
 }
 
@@ -71,7 +71,7 @@ export function* signUp({ payload: { email, password, displayName }}) {
 		const { user } = yield auth.createUserWithEmailAndPassword(email, password);
 		yield put(signUpSuccess({ user, additionalData: { displayName } }));
 	} catch(error) {
-		yield put(signInFailure(error));
+		yield put(signUpFailure(error));
 	}
 }
 
