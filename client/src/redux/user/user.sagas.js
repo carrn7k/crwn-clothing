@@ -11,18 +11,27 @@ import {
 	signUpFailure
 } from './user.actions';
 
+import { populateCart } from '../cart/cart.actions';
+
 import { 
 	auth,
 	googleProvider, 
 	createUserProfileDocument,
 	getCurrentUser,
+	addCartItemsOnSignout,
+	convertCartItemsSnapshotToMap
 } from '../../firebase/firebase.utils';
 
 export function* getSnapshotFromUserAuth(userAuth, additionalData) {
 	try {
 		const userRef = yield call(createUserProfileDocument, userAuth, additionalData);
 		const userSnapshot = yield userRef.get();
-		yield put(signInSuccess({ id: userSnapshot.id, ...userSnapshot.data() }))
+		const userCartRef = yield userRef.collection('cartItems');
+		const userCartSnapshot = yield userCartRef.get();
+		const userCartItems = yield convertCartItemsSnapshotToMap(userCartSnapshot);
+
+		yield put(signInSuccess({ id: userSnapshot.id, ...userSnapshot.data() }));
+		yield put(populateCart(userCartItems));
 	} catch(error) {
 		yield put(signInFailure(error));
 	}
@@ -36,6 +45,7 @@ export function* signInWithGoogle() {
 		yield put(signInFailure(error));
 	}
 }
+
 
 export function* signInWithEmail({ payload: { email, password }}) {
 
@@ -57,8 +67,9 @@ export function* isUserAuthenticated() {
 	}
 }
 
-export function* signOut() {
+export function* signOut({ payload: { currentUser, cartItems}}) {
 	try {
+		yield addCartItemsOnSignout(currentUser, cartItems);
 		yield auth.signOut();
 		yield put(signOutSuccess());
 	} catch(error) {

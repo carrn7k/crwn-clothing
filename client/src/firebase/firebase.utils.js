@@ -16,7 +16,19 @@ const config = {
 export const createUserProfileDocument = async (userAuth, additionalData) => {
 	if (!userAuth) return;
 
+
 	const userRef = firestore.doc(`users/${userAuth.uid}`);
+
+
+	// createa userCart 
+	/*
+	const userCart = firestore.doc(`carts/${userAuth.uid}`)
+	try {
+		await userCart.set({
+			cartItems
+		})
+	}
+	*/
 	const snapShot = await userRef.get();
 
 	if (!snapShot.exists) {
@@ -37,6 +49,43 @@ export const createUserProfileDocument = async (userAuth, additionalData) => {
 	}
 
 	return userRef;
+}
+
+export const addCartItemsOnSignout = async (currentUser, cartItems) => {
+	// update to add only new items and update the quanity of items already in the collection
+	if (cartItems.length < 0) return;
+
+	const cartItemsRef = firestore.doc(`users/${currentUser.id}`).collection('cartItems');
+	const cartItemsData = await cartItemsRef.get();
+
+	// delete stale docs in the firestore 
+	cartItemsData.docs.forEach(async cartItem => {
+		cartItemsRef.doc(cartItem.id).delete();
+	})
+
+	// populate cartItems collection with new cartItem docs
+	const batch = firestore.batch();
+	cartItems.forEach(obj => {
+		const newDocRef = cartItemsRef.doc();
+		batch.set(newDocRef, obj);
+	});
+
+	return await batch.commit();
+}
+
+export const convertCartItemsSnapshotToMap = cartItems => {
+	return cartItems.docs.map(doc => {
+		const { id, imageUrl, name, price, quantity } = doc.data();
+
+		return {
+			id,
+			imageUrl, 
+			name,
+			price,
+			quantity
+		}
+	});
+
 }
 
 export const addCollectionAndDocuments = async (collectionKey, objectsToAdd) => {

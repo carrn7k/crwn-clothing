@@ -12,7 +12,12 @@ const cartReducer = (state = INITIAL_STATE, action) => {
 			return {
 				...state, 
 				hidden: !state.hidden
-			}
+			};
+		case CartActionTypes.POPULATE_CART:
+			return {
+				...state,
+				cartItems: action.payload
+			};
 		case CartActionTypes.ADD_ITEM:
 			return {
 				...state,
